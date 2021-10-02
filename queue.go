@@ -16,6 +16,8 @@ type Queue struct {
 	notEmpty          *sync.Cond
 	// You can subscribe to this channel to know whether queue is not empty
 	NotEmpty chan struct{}
+	// You can subscribe to this channel to know whether queue is empty after it wasn't empty
+	Empty chan struct{}
 }
 
 func New() *Queue {
@@ -25,6 +27,7 @@ func New() *Queue {
 		buf:      make([]int64, minQueueLen),
 		mutex:    &sync.Mutex{},
 		NotEmpty: make(chan struct{}, 1),
+		Empty:    make(chan struct{}, 1),
 	}
 
 	q.notEmpty = sync.NewCond(q.mutex)
@@ -80,6 +83,11 @@ func (q *Queue) notify() {
 	if len(q.items) > 0 {
 		select {
 		case q.NotEmpty <- struct{}{}:
+		default:
+		}
+	} else {
+		select {
+		case q.Empty <- struct{}{}:
 		default:
 		}
 	}
